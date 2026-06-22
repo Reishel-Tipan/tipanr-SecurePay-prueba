@@ -2,44 +2,45 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 
+// Carga del par de llaves OpenSSL (PKCS#8) desde la raíz del proyecto.
+// La ruta se resuelve relativa al módulo para no depender del cwd del proceso.
+const PRIVATE_KEY_PATH = path.join(__dirname, '../../private.pem');
+const PUBLIC_KEY_PATH = path.join(__dirname, '../../public.pem');
+
 /**
- * Genera un Token JWT firmado con clave privada asimétrica (RS256).
- * 
- * TODO (Estudiante):
- * 1. Cargar el contenido de la clave privada 'private.pem' desde la raíz usando fs.readFileSync.
- * 2. Utilizar jwt.sign para firmar el payload (user).
- * 3. Configurar el algoritmo RS256 en la sección de opciones ({ algorithm: 'RS256', expiresIn: '1h' }).
- * 
- * @param {Object} user - Objeto con la información del usuario a firmar.
- * @returns {string} JWT Token firmado.
+ * Genera un Token JWT firmado de forma ASIMÉTRICA con la clave privada (RS256).
+ * Payload con claims seguros: sub, name y exp configurado a 2 minutos.
+ *
+ * @param {Object} user - { sub, name }
+ * @returns {string} JWT firmado.
  */
 function signToken(user) {
-  // TODO (Estudiante): Implementar la carga de 'private.pem' y la firma con algoritmo RS256
-  // Ejemplo:
-  // const privateKey = fs.readFileSync(path.join(__dirname, '../../private.pem'), 'utf8');
-  // return jwt.sign(user, privateKey, { algorithm: 'RS256', expiresIn: '1h' });
-  
-  throw new Error('Función signToken(user) no implementada. TODO (Estudiante).');
+  const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
+
+  const payload = {
+    sub: user.sub,
+    name: user.name
+  };
+
+  // exp a 2 minutos mediante expiresIn; firma asimétrica RS256.
+  return jwt.sign(payload, privateKey, {
+    algorithm: 'RS256',
+    expiresIn: '2m'
+  });
 }
 
 /**
- * Verifica un Token JWT utilizando la clave pública asimétrica (RS256).
- * 
- * TODO (Estudiante):
- * 1. Cargar el contenido de la clave pública 'public.pem' desde la raíz usando fs.readFileSync.
- * 2. Utilizar jwt.verify para validar y decodificar el token.
- * 3. Configurar y forzar el algoritmo RS256 en las opciones ({ algorithms: ['RS256'] }).
- * 
- * @param {string} token - Token JWT a verificar.
- * @returns {Object} Payload decodificado si es válido.
+ * Verifica un Token JWT usando ÚNICAMENTE la clave pública (RS256).
+ * Permite la validación autónoma/stateless en cada microservicio.
+ *
+ * @param {string} token
+ * @returns {Object} Payload decodificado si es válido (lanza excepción si no).
  */
 function verifyToken(token) {
-  // TODO (Estudiante): Implementar la carga de 'public.pem' y verificación con algoritmo RS256
-  // Ejemplo:
-  // const publicKey = fs.readFileSync(path.join(__dirname, '../../public.pem'), 'utf8');
-  // return jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+  const publicKey = fs.readFileSync(PUBLIC_KEY_PATH, 'utf8');
 
-  throw new Error('Función verifyToken(token) no implementada. TODO (Estudiante).');
+  // Se fuerza el algoritmo RS256 para impedir ataques de degradación (alg=none / HS256).
+  return jwt.verify(token, publicKey, { algorithms: ['RS256'] });
 }
 
 module.exports = {
