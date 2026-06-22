@@ -1,7 +1,5 @@
-// TODO (Estudiante): Configurar e inicializar Sentry Node SDK para la observabilidad ANTES de importar Express o cualquier otra librería.
-// Pistas:
-// const Sentry = require('@sentry/node');
-// Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0 });
+// PRIMERA LÍNEA del backend: inicializa Sentry antes que Express o cualquier librería.
+const Sentry = require('./src/instrument');
 
 require('dotenv').config();
 const express = require('express');
@@ -25,8 +23,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// Manejo centralizado de excepciones y reporte a Sentry
-// TODO (Estudiante): Integrar el middleware de errores de Sentry: Sentry.setupExpressErrorHandler(app);
+// Handler de errores de Sentry: captura las excepciones no controladas (errores
+// OPERACIONALES) que llegan vía next(err) y las reporta al dashboard. Los errores
+// LÓGICOS de seguridad (401/403) se resuelven antes en el middleware y nunca llegan aquí.
+Sentry.setupExpressErrorHandler(app);
+
+// Manejo centralizado de la respuesta 500 al cliente.
 app.use((err, req, res, next) => {
   console.error('[SERVER ERROR]:', err);
   res.status(500).json({
